@@ -116,3 +116,15 @@
   color: #fecaca;
   border: 1px solid #f87171;
 }
+.progress-container {
+  background: #ccc;
+  height: 8px;
+  border-radius: 4px;
+  overflow: hidden;
+  margin-top: 8px;
+}
+.progress-bar {
+  background: #4f46e5; /* blue color */
+  height: 100%;
+  transition: width 0.2s ease;
+}

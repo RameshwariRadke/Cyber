@@ -1,10 +1,15 @@
+// Dashboard.js
 import { useEffect, useState } from 'react';
 import { Link, Route, Routes } from 'react-router-dom';
 import './Dashboard.css';
 import Upload from './Upload';
 import UploadedFiles from './UploadedFiles';
 
-const DashboardHome = ({ logs, lastUpdated, uploadedFiles, showUploads, handleFilesClick }) => (
+
+//Nikhil
+import axios from 'axios';
+
+const DashboardHome = ({ logs, lastUpdated, uploadedFiles, showUploads, handleFilesClick,alerts, mlAlerts }) => (
   <>
     <h1>📈 Admin Overview</h1>
 
@@ -66,6 +71,57 @@ const DashboardHome = ({ logs, lastUpdated, uploadedFiles, showUploads, handleFi
       </div>
     </div>
 
+
+
+   <div className="card full-width" style={{ marginTop: '2rem' }}>
+  <h2>🚨 UEBA Alerts</h2>
+  {alerts.length > 0 ? (
+    <table className="log-table">
+      <thead>
+        <tr>
+          <th>Timestamp</th>
+          <th>User</th>
+          <th>Issue</th>
+        </tr>
+      </thead>
+      <tbody>
+        {alerts.map((alert, index) => (
+          <tr key={index}>
+            <td>{alert.timestamp}</td>
+            <td>{alert.username}</td>
+            <td>{alert.issue}</td>
+          </tr>
+        ))}
+      </tbody>
+    </table>
+  ) : (
+    <p>✅ No suspicious activity detected.</p>
+  )}
+</div>
+
+
+
+ <div>
+  <h2>🤖 ML-Predicted Anomalies</h2>
+  {Array.isArray(mlAlerts) && mlAlerts.length > 0 ? (
+     <ul style={{ listStyleType: 'none', padding: 0 }}>
+  {mlAlerts.map((row, idx) => (
+    <li key={idx} className="ml-alert">
+      {row.explanation}
+    </li>
+  ))}
+</ul>
+
+  ) : (
+    <p>✅ No ML anomalies detected.</p>
+  )}
+</div>
+
+
+
+
+
+
     <div className="card full-width">
       <h2>📁 Folder Activity Logs</h2>
       {logs.length > 0 ? (
@@ -78,18 +134,37 @@ const DashboardHome = ({ logs, lastUpdated, uploadedFiles, showUploads, handleFi
             </tr>
           </thead>
           <tbody>
+
+          
             {logs.map((log, index) => {
-              const parts = log.split('] ');
-              const timestamp = parts[0].replace('[', '');
-              const [activityType, filePath] = parts[1].split(': ');
-              return (
-                <tr key={index}>
-                  <td>{timestamp}</td>
-                  <td>{activityType}</td>
-                  <td>{filePath}</td>
-                </tr>
-              );
-            })}
+  if (typeof log !== 'string' || !log.includes('] ')) {
+    return (
+      <tr key={index}>
+        <td colSpan="3">⚠️ Invalid log format</td>
+      </tr>
+    );
+  }
+
+  try {
+    const parts = log.split('] ');
+    const timestamp = parts[0].replace('[', '');
+    const [activityType, filePath] = parts[1].split(': ');
+    return (
+      <tr key={index}>
+        <td>{timestamp}</td>
+        <td>{activityType}</td>
+        <td>{filePath}</td>
+      </tr>
+    );
+  } catch (err) {
+    return (
+      <tr key={index}>
+        <td colSpan="3">⚠️ Error parsing log</td>
+      </tr>
+    );
+  }
+})}
+
           </tbody>
         </table>
       ) : (
@@ -102,7 +177,7 @@ const DashboardHome = ({ logs, lastUpdated, uploadedFiles, showUploads, handleFi
       onClick={async () => {
         await fetch('http://localhost:5000/api/admin/wipe-request', { method: 'POST' })
           .then((res) => res.json())
-          .then((data) => alert('Wipe request sent'));
+          .then(() => alert('Wipe request sent'));
       }}
       className="bg-red-600 text-white px-4 py-2 rounded"
       style={{ marginTop: '1rem' }}
@@ -118,6 +193,14 @@ const Dashboard = () => {
   const [uploadedFiles, setUploadedFiles] = useState([]);
   const [showUploads, setShowUploads] = useState(false);
 
+
+  const [mlAlerts, setMlAlerts] = useState([]);
+
+  //Nikhil
+   const [alerts, setAlerts] = useState([]);
+   //nikhil
+
+
   useEffect(() => {
     const fetchLogs = () => {
       fetch('http://localhost:5000/api/logs')
@@ -130,11 +213,40 @@ const Dashboard = () => {
         })
         .catch((err) => console.error('Error fetching logs:', err));
     };
-
     fetchLogs();
     const interval = setInterval(fetchLogs, 5000);
     return () => clearInterval(interval);
   }, []);
+  
+
+  //Nikhil Change
+   useEffect(() => {
+  const fetchUEBAAlerts = () => {
+    fetch('http://localhost:5000/api/ueba-alerts')
+      .then((res) => res.json())
+      .then((data) => {
+        if (data.success) {
+          setAlerts(data.alerts);
+        }
+      })
+      .catch((err) => console.error('Error fetching UEBA alerts:', err));
+  };
+
+  fetchUEBAAlerts(); // Initial call
+  const alertInterval = setInterval(fetchUEBAAlerts, 5000); // Poll every 5s
+
+  return () => clearInterval(alertInterval); // Cleanup on unmount
+}, []);
+
+
+//Nikhil Change
+  useEffect(() => {
+    axios.get('http://localhost:5000/api/mlpredictions')
+  .then(res => setMlAlerts(res.data.anomalies))
+  .catch(err => console.error(err));
+
+  }, []);
+  
 
   const handleFilesClick = () => {
     const newState = !showUploads;
@@ -173,6 +285,10 @@ const Dashboard = () => {
                 uploadedFiles={uploadedFiles}
                 showUploads={showUploads}
                 handleFilesClick={handleFilesClick}
+                 
+                //nikhil
+                 alerts={alerts}
+                  mlAlerts={mlAlerts}
               />
             }
           />

@@ -22,11 +22,14 @@ const Upload = () => {
     formData.append('file', file);
 
     try {
+      setStatus('🔍 Scanning for viruses...'); // Show scanning message
+
       const res = await axios.post('http://localhost:5000/api/upload', formData);
+
       if (res.data.success) {
         setStatus(`✅ File uploaded: ${res.data.filename}`);
         setFile(null);
-        fileInputRef.current.value = ''; // reset file input
+        fileInputRef.current.value = '';
       } else {
         setStatus('❌ Upload failed.');
       }
@@ -65,7 +68,7 @@ const Upload = () => {
 
         {file && <p className="file-name">Selected: {file.name}</p>}
 
-        <button className="upload-button" onClick={handleUpload}>
+        <button className="upload-button" onClick={handleUpload} disabled={!file}>
           🚀 Upload File
         </button>
 
